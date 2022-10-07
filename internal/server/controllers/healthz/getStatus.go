@@ -17,7 +17,7 @@ func GetStatus(s *server.Server) func(c echo.Context) error {
 			return c.NoContent(http.StatusInternalServerError)
 		}
 
-		s.Logger.Info("DB Connection check Successful.")
+		s.Logger.Info("DB Connection check successful.")
 		return c.NoContent(http.StatusNoContent)
 	}
 }

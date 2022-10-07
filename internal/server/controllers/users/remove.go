@@ -17,8 +17,8 @@ func Remove(s *server.Server) func(c echo.Context) error {
 
 		_, err := s.UserRepository.RemoveUser(c.Request().Context(), uuid.Must(uuid.Parse(id)))
 		if err != nil {
-			s.Logger.Error("Failed to find users")
-			return err
+			s.Logger.Error("Failed to remove user")
+			return c.NoContent(http.StatusInternalServerError)
 		}
 
 		return c.NoContent(http.StatusAccepted)

@@ -14,8 +14,16 @@ func Update(s *server.Server) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		u := new(models.User)
 		if err := c.Bind(u); err != nil {
-			return err
+			s.Logger.Error("Failed to parse user body")
+			return c.NoContent(http.StatusBadRequest)
 		}
-		return c.JSON(http.StatusOK, u)
+
+		res, err := s.UserRepository.UpdateUser(c.Request().Context(), u)
+		if err != nil {
+			s.Logger.Error("Failed to update user")
+			return c.NoContent(http.StatusInternalServerError)
+		}
+
+		return c.JSON(http.StatusOK, res)
 	}
 }

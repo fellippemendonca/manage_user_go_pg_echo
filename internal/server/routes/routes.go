@@ -9,12 +9,10 @@ import (
 )
 
 func LoadRoutes(g *echo.Group, s *server.Server) {
-
 	g.GET("/healthz", healthz.GetStatus(s))
 
-	v1 := g.Group("/v1")
-	v1.GET("/users", users.Find(s))
-	v1.POST("/users", users.Create(s))
-	v1.PUT("/users/:id", users.Update(s))
-	v1.DELETE("/users/:id", users.Remove(s))
+	g.GET("/users", users.Find(s))
+	g.POST("/users", users.Create(s))
+	g.PUT("/users", users.Update(s))
+	g.DELETE("/users/:id", users.Remove(s))
 }

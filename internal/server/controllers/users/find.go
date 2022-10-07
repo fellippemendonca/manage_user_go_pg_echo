@@ -1,7 +1,10 @@
 package controllers
 
 import (
+	"database/sql"
+	"errors"
 	"net/http"
+	"strconv"
 
 	"github.com/fellippemendonca/manage_user_go_pg_echo/internal/models"
 	"github.com/fellippemendonca/manage_user_go_pg_echo/internal/server"
@@ -12,31 +15,36 @@ import (
 // e.GET("/users", list)
 func Find(s *server.Server) func(c echo.Context) error {
 	return func(c echo.Context) error {
-
-		user := models.User{}
 		values := c.Request().URL.Query()
 
-		for k, v := range values {
-			switch k {
-			case "country":
-				user.Country = v[0]
-			case "first_name":
-				user.First_name = v[0]
-			case "last_name":
-				user.Last_name = v[0]
-			case "email":
-				user.Email = v[0]
-			case "nickname":
-				user.Nickname = v[0]
+		var limit int
+		var err error
+		if values.Has("limit") {
+			limitStr := values.Get("limit")
+			limit, err = strconv.Atoi(limitStr)
+			if err != nil {
+				s.Logger.Error("Failed to parse page limit")
+				return c.NoContent(http.StatusBadRequest)
 			}
 		}
 
-		result, err := s.UserRepository.FindUsers(c.Request().Context(), &user)
+		user := models.User{}
+		user.Country = values.Get("country")
+		user.First_name = values.Get("first_name")
+		user.Last_name = values.Get("last_name")
+		user.Email = values.Get("email")
+		user.Nickname = values.Get("nickname")
+		pageToken := values.Get("page_token")
+
+		users, pageToken, err := s.UserRepository.FindUsers(c.Request().Context(), &user, pageToken, limit)
 		if err != nil {
-			s.Logger.Error("Failed to find users")
-			return err
+			if errors.Is(err, sql.ErrNoRows) {
+				return c.NoContent(http.StatusNotFound)
+			}
+			s.Logger.Error("FindUsers failed")
+			return c.NoContent(http.StatusInternalServerError)
 		}
 
-		return c.JSON(http.StatusOK, result)
+		return c.JSON(http.StatusOK, models.UsersResponse{Users: users, PageToken: pageToken})
 	}
 }

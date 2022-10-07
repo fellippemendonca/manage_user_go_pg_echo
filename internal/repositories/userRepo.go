@@ -9,15 +9,16 @@ import (
 	"time"
 
 	"github.com/fellippemendonca/manage_user_go_pg_echo/internal/models"
+	"github.com/fellippemendonca/manage_user_go_pg_echo/internal/repositories/common"
 
 	"github.com/google/uuid"
 )
 
 const (
-	// TODO: 2sec is plenty, but maybe this should be configurable.
-	postgresCheckTimeout       = 2 * time.Second
-	pageLimit            int32 = 100
-	oneForToken          int32 = 1
+	// 2sec is plenty, but maybe this should be configurable.
+	postgresCheckTimeout     = 2 * time.Second
+	pageLimit            int = 100
+	oneForToken          int = 1
 )
 
 // UserRepo implements models.UserRepo
@@ -100,18 +101,69 @@ func (s *UserRepo) CreateUser(ctx context.Context, user *models.User) (*models.U
 	return user, nil
 }
 
-func (s *UserRepo) FindUsers(ctx context.Context, user *models.User) ([]*models.User, error) {
+// Update user method
+func (s *UserRepo) UpdateUser(ctx context.Context, user *models.User) (*models.User, error) {
+	query := `UPDATE U1.USERS SET
+		FIRST_NAME = $2,
+		LAST_NAME = $3,
+		NICKNAME = $4,
+		PASSWORD = $5,
+		EMAIL = $6,
+		COUNTRY = $7,
+		UPDATED_AT = now() AT TIME ZONE 'utc' -- UPDATED_AT
+	WHERE ID = $1
+	RETURNING ID, FIRST_NAME, LAST_NAME, NICKNAME, PASSWORD, EMAIL, COUNTRY, CREATED_AT, UPDATED_AT`
 
-	// t, err := template.New("WHERE").Parse("WHERE You have a task named \"{{ .Name}}\" with description: \"{{ .Description}}\"")
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// err = t.Execute(os.Stdout, user)
-	// if err != nil {
-	// 	panic(err)
-	// }
+	stmt, err := s.db.PrepareContext(ctx, query)
+	if err != nil {
+		log.Fatal(err)
+		return nil, err
+	}
+	defer stmt.Close()
 
-	query := `SELECT
+	row := stmt.QueryRow(
+		user.ID,
+		user.First_name,
+		user.Last_name,
+		user.Nickname,
+		user.Password,
+		user.Email,
+		user.Country,
+	)
+	err = row.Scan(
+		&user.ID,
+		&user.First_name,
+		&user.Last_name,
+		&user.Nickname,
+		&user.Password,
+		&user.Email,
+		&user.Country,
+		&user.Created_at,
+		&user.Updated_at,
+	)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("UpdateUser failed: %w", err)
+		}
+		return nil, fmt.Errorf("UpdateUser failed: %w", err)
+	}
+	return user, nil
+}
+
+// Find users by the attributes present in the user struct param
+func (s *UserRepo) FindUsers(ctx context.Context, user *models.User, pageToken string, limit int) ([]*models.User, string, error) {
+
+	if limit < 1 || limit > pageLimit {
+		limit = pageLimit
+	}
+
+	userID, err := common.DecodeBase64ToUUID(pageToken)
+	if err != nil {
+		return nil, "", fmt.Errorf("FindUsers pageToken decoding failed: %w", err)
+	}
+
+	template := `SELECT
 		ID,
 		FIRST_NAME,
 		LAST_NAME,
@@ -121,17 +173,31 @@ func (s *UserRepo) FindUsers(ctx context.Context, user *models.User) ([]*models.
 		COUNTRY,
 		CREATED_AT,
 		UPDATED_AT
-		FROM U1.USERS`
+		FROM U1.USERS
+		WHERE ID >= $1
+		{{if .First_name}} AND FIRST_NAME = '{{.First_name}}' {{end}}
+		{{if .Last_name}} AND LAST_NAME = '{{.Last_name}}' {{end}}
+		{{if .Nickname}} AND NICKNAME = '{{.Nickname}}' {{end}}
+		{{if .Country}} AND COUNTRY = '{{.Country}}' {{end}}
+		{{if .Email}} AND EMAIL = '{{.Email}}' {{end}}
+		{{if .ID}} AND ID >= '{{.ID}}' {{end}}
+		ORDER BY ID
+		LIMIT $2`
+
+	query, err := common.ProcessTemplate(template, user)
+	if err != nil {
+		return nil, "", fmt.Errorf("FindUsers Template failed: %w", err)
+	}
 
 	stmt, err := s.db.PrepareContext(ctx, query)
 	if err != nil {
-		log.Fatal(err)
+		return nil, "", fmt.Errorf("FindUsers Preparation failed: %w", err)
 	}
 	defer stmt.Close()
 
-	rows, err := stmt.Query()
+	rows, err := stmt.Query(userID, pageLimit+oneForToken)
 	if err != nil {
-		log.Fatal(err)
+		return nil, "", fmt.Errorf("FindUsers Query failed: %w", err)
 	}
 	defer rows.Close()
 
@@ -151,11 +217,14 @@ func (s *UserRepo) FindUsers(ctx context.Context, user *models.User) ([]*models.
 			&user.Updated_at,
 		); err != nil {
 			log.Fatal(err)
-			return nil, err
+			return nil, "", err
 		}
 		users = append(users, &user)
 	}
-	return users, nil
+
+	usersClean, pageToken := common.Paginate(users, limit)
+
+	return usersClean, pageToken, nil
 }
 
 func (s *UserRepo) RemoveUser(ctx context.Context, id uuid.UUID) (int64, error) {
