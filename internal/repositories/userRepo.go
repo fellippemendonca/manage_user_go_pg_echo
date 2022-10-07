@@ -38,7 +38,7 @@ func (s *UserRepo) TestConnection(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, postgresCheckTimeout)
 	defer cancel()
 	if err := s.db.PingContext(ctx); err != nil {
-		return fmt.Errorf("database ping failed: %w", err)
+		return fmt.Errorf("TestConnection failed: %w", err)
 	}
 	return nil
 }
@@ -67,8 +67,7 @@ func (s *UserRepo) CreateUser(ctx context.Context, user *models.User) (*models.U
 
 	stmt, err := s.db.PrepareContext(ctx, query)
 	if err != nil {
-		log.Fatal(err)
-		return nil, err
+		return nil, fmt.Errorf("CreateUser PrepareContext failed: %w", err)
 	}
 	defer stmt.Close()
 
@@ -94,7 +93,7 @@ func (s *UserRepo) CreateUser(ctx context.Context, user *models.User) (*models.U
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, fmt.Errorf("CreateUser failed: %w", err)
+			return nil, fmt.Errorf("CreateUser returned no rows: %w", err)
 		}
 		return nil, fmt.Errorf("CreateUser failed: %w", err)
 	}
@@ -116,8 +115,7 @@ func (s *UserRepo) UpdateUser(ctx context.Context, user *models.User) (*models.U
 
 	stmt, err := s.db.PrepareContext(ctx, query)
 	if err != nil {
-		log.Fatal(err)
-		return nil, err
+		return nil, fmt.Errorf("UpdateUser PrepareContext failed: %w", err)
 	}
 	defer stmt.Close()
 
@@ -144,7 +142,7 @@ func (s *UserRepo) UpdateUser(ctx context.Context, user *models.User) (*models.U
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, fmt.Errorf("UpdateUser failed: %w", err)
+			return nil, fmt.Errorf("UpdateUser returned no rows: %w", err)
 		}
 		return nil, fmt.Errorf("UpdateUser failed: %w", err)
 	}
@@ -186,7 +184,7 @@ func (s *UserRepo) FindUsers(ctx context.Context, user *models.User, pageToken s
 
 	query, err := common.ProcessTemplate(template, user)
 	if err != nil {
-		return nil, "", fmt.Errorf("FindUsers Template failed: %w", err)
+		return nil, "", fmt.Errorf("FindUsers Templating failed: %w", err)
 	}
 
 	stmt, err := s.db.PrepareContext(ctx, query)
@@ -232,13 +230,13 @@ func (s *UserRepo) RemoveUser(ctx context.Context, id uuid.UUID) (int64, error) 
 
 	stmt, err := s.db.PrepareContext(ctx, query)
 	if err != nil {
-		log.Fatal(err)
+		return 0, fmt.Errorf("RemoveUser PrepareContext failed: %w", err)
 	}
 	defer stmt.Close()
 
 	result, err := stmt.ExecContext(ctx, id)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("RemoveUser ExecContext failed: %w", err)
 	}
 	return result.RowsAffected()
 }

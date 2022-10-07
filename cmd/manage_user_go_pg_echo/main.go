@@ -8,6 +8,7 @@ import (
 	_ "github.com/lib/pq"
 	"go.uber.org/zap"
 
+	"github.com/fellippemendonca/manage_user_go_pg_echo/internal/messages"
 	"github.com/fellippemendonca/manage_user_go_pg_echo/internal/repositories"
 	"github.com/fellippemendonca/manage_user_go_pg_echo/internal/server"
 	"github.com/fellippemendonca/manage_user_go_pg_echo/internal/server/middlewares"
@@ -40,7 +41,9 @@ func main() {
 	}
 	defer db.Close()
 
-	server.UserRepository = repositories.NewUserRepo(db)
+	userRepository := repositories.NewUserRepo(db)
+	userEvents := messages.NewUserEvents(userRepository)
+	server.UserRepository = userEvents
 	server.Logger.Info("Database connected")
 
 	// Echo
