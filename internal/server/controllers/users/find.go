@@ -8,6 +8,7 @@ import (
 
 	"github.com/fellippemendonca/manage_user_go_pg_echo/internal/models"
 	"github.com/fellippemendonca/manage_user_go_pg_echo/internal/server"
+	"go.uber.org/zap"
 
 	"github.com/labstack/echo/v4"
 )
@@ -23,7 +24,7 @@ func Find(s *server.Server) func(c echo.Context) error {
 			limitStr := values.Get("limit")
 			limit, err = strconv.Atoi(limitStr)
 			if err != nil {
-				s.Logger.Error("Failed to parse page limit")
+				s.Logger.Error("Failed to parse page limit", zap.Error(err))
 				return c.NoContent(http.StatusBadRequest)
 			}
 		}
@@ -41,7 +42,7 @@ func Find(s *server.Server) func(c echo.Context) error {
 			if errors.Is(err, sql.ErrNoRows) {
 				return c.NoContent(http.StatusNotFound)
 			}
-			s.Logger.Error("FindUsers failed")
+			s.Logger.Error("FindUsers failed", zap.Error(err))
 			return c.NoContent(http.StatusInternalServerError)
 		}
 

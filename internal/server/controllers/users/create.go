@@ -5,6 +5,7 @@ import (
 
 	"github.com/fellippemendonca/manage_user_go_pg_echo/internal/models"
 	"github.com/fellippemendonca/manage_user_go_pg_echo/internal/server"
+	"go.uber.org/zap"
 
 	"github.com/labstack/echo/v4"
 )
@@ -15,13 +16,13 @@ func Create(s *server.Server) func(c echo.Context) error {
 
 		u := new(models.User)
 		if err := c.Bind(u); err != nil {
-			s.Logger.Error("Failed to parse user body")
+			s.Logger.Error("Failed to parse user body", zap.Error(err))
 			return c.NoContent(http.StatusBadRequest)
 		}
 
 		res, err := s.UserRepository.CreateUser(c.Request().Context(), u)
 		if err != nil {
-			s.Logger.Error("Failed to persist user")
+			s.Logger.Error("Failed to persist user", zap.Error(err))
 			return c.NoContent(http.StatusInternalServerError)
 		}
 
