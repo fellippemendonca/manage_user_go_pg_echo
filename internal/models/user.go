@@ -20,7 +20,7 @@ type User struct {
 	Updated_at time.Time `json:"updated_at"`
 }
 
-// 
+// UsersResponse is a paginated response for the method Get all Users
 type UsersResponse struct {
 	Users     []*User `json:"users"`
 	PageToken string  `json:"page_token"`
