@@ -1,11 +1,11 @@
 package routes
 
 import (
+	"github.com/labstack/echo/v4"
+
 	"github.com/fellippemendonca/manage_user_go_pg_echo/internal/server"
 	healthz "github.com/fellippemendonca/manage_user_go_pg_echo/internal/server/controllers/healthz"
 	users "github.com/fellippemendonca/manage_user_go_pg_echo/internal/server/controllers/users"
-
-	"github.com/labstack/echo/v4"
 )
 
 func LoadRoutes(g *echo.Group, s *server.Server) {

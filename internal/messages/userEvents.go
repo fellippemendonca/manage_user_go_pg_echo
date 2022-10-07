@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/fellippemendonca/manage_user_go_pg_echo/internal/models"
-
 	"github.com/google/uuid"
+
+	"github.com/fellippemendonca/manage_user_go_pg_echo/internal/models"
 )
 
 // UserRepo implements models.UserRepo

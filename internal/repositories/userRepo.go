@@ -8,10 +8,10 @@ import (
 	"log"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/fellippemendonca/manage_user_go_pg_echo/internal/models"
 	"github.com/fellippemendonca/manage_user_go_pg_echo/internal/repositories/common"
-
-	"github.com/google/uuid"
 )
 
 const (

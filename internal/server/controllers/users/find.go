@@ -6,11 +6,11 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/fellippemendonca/manage_user_go_pg_echo/internal/models"
-	"github.com/fellippemendonca/manage_user_go_pg_echo/internal/server"
+	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
 
-	"github.com/labstack/echo/v4"
+	"github.com/fellippemendonca/manage_user_go_pg_echo/internal/models"
+	"github.com/fellippemendonca/manage_user_go_pg_echo/internal/server"
 )
 
 // e.GET("/users", list)
@@ -20,6 +20,7 @@ func Find(s *server.Server) func(c echo.Context) error {
 
 		var limit int
 		var err error
+		// Check and convert page-limit from querystring
 		if values.Has("limit") {
 			limitStr := values.Get("limit")
 			limit, err = strconv.Atoi(limitStr)
@@ -29,6 +30,7 @@ func Find(s *server.Server) func(c echo.Context) error {
 			}
 		}
 
+		// Fills a User object with possible values provided in the querystring
 		user := models.User{}
 		user.Country = values.Get("country")
 		user.First_name = values.Get("first_name")

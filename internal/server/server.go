@@ -1,9 +1,9 @@
 package server
 
 import (
-	"github.com/fellippemendonca/manage_user_go_pg_echo/internal/models"
-
 	"go.uber.org/zap"
+
+	"github.com/fellippemendonca/manage_user_go_pg_echo/internal/models"
 )
 
 type Server struct {
