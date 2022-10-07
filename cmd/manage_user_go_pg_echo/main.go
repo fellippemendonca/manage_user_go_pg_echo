@@ -56,13 +56,13 @@ func main() {
 	// Recover middleware
 	e.Use(middlewares.Recover())
 
-	// under /api path
+	// creating /api path group
 	api := e.Group("/api")
 
 	// Cors Middleware
 	api.Use(middlewares.Cors())
 
-	// Routes
+	// Load Routes
 	routes.LoadRoutes(api, server)
 
 	// Start server

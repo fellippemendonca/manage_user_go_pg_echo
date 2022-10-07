@@ -36,6 +36,7 @@ func (s *UserEvents) sendMessageEvent(name string) error {
 	return nil
 }
 
+// TestConnection method
 func (s *UserEvents) TestConnection(ctx context.Context) error {
 	return s.userRepository.TestConnection(ctx)
 }
