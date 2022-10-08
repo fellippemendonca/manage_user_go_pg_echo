@@ -191,7 +191,7 @@ func (s *UserRepo) FindUsers(ctx context.Context, user *models.User, pageToken s
 	}
 	defer rows.Close()
 
-	var users []*models.User
+	users := []*models.User{}
 
 	for rows.Next() {
 		var user models.User

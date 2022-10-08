@@ -1,0 +1,38 @@
+version: "3.3"
+services:
+  postgres:
+    container_name: postgres
+    image: postgres:14-alpine
+    ports:
+      - 5432:5432
+    environment: 
+      - POSTGRES_DB=db
+      - POSTGRES_USER=username
+      - POSTGRES_PASSWORD=password
+    restart: unless-stopped
+
+  rabbitmq:
+    container_name: rabbitmq
+    image: rabbitmq:management-alpine
+    ports:
+      - 5672:5672
+      - 15672:15672
+    restart: unless-stopped
+
+  api:
+    build: .
+    ports:
+      - "3000:3000"
+    env_file:
+      - ./.env
+    depends_on:
+      - postgres
+      - rabbitmq
+    # entrypoint: [
+    #   # "wait4x", 
+    #   # "postgresql", "'postgres://bob:secret@1.2.3.4:5432/mydb?sslmode=disable postgresql://postgres/db?user=username&password=password&sslmode=disable'", "-t", "1m",
+    #   # "--", "wait4x", 
+    #   # "rabbitmq", "'amqp://guest:guest@rabbitmq:5672'", "-t", "1m",
+    #   # "--", "/app"
+    #   "/bin/sh", "-c" , "sleep 20 && /app"
+    # ]

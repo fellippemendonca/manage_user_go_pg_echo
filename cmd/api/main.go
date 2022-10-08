@@ -2,9 +2,13 @@ package main
 
 import (
 	"database/sql"
+	"errors"
 	"log"
 	"os"
 
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v4"
 	_ "github.com/lib/pq"
@@ -25,43 +29,46 @@ type Todo struct {
 }
 
 func main() {
-
 	server := server.NewServer()
-
-	// Init .env variables
-	err := godotenv.Load(".env")
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
 
 	// Init Zap Logger
 	zapLogger, err := zap.NewProduction()
 	if err != nil {
-		log.Fatal("Logger initialization failed", err)
+		log.Fatal("logger initialization failed", err)
 	}
 	defer zapLogger.Sync()
 
 	server.Logger = zapLogger
-	server.Logger.Info("Logger initialized")
+	server.Logger.Info("logger initialized")
+
+	// Init .env variables
+	err = godotenv.Load(".env")
+	if err != nil {
+		server.Logger.Warn("Error loading .env file")
+	}
 
 	// Database Connection
 	db, err := sql.Open("postgres", os.Getenv("MANAGE_USER_GO_POSTGRES"))
 	if err != nil {
-		server.Logger.Panic("Database connection failed", zap.Error(err))
+		server.Logger.Fatal("database connection failed", zap.Error(err))
 	}
 	defer db.Close()
 	server.Logger.Info("Database connected")
 	userRepo := repositories.NewUserRepo(db)
 
+	if err := migrateDB(os.Getenv("MANAGE_USER_GO_POSTGRES")); err != nil {
+		server.Logger.Fatal("database migration failed", zap.Error(err))
+	}
+
 	conn, err := amqp.Dial(os.Getenv("MANAGE_USER_GO_RABBITMQ"))
 	if err != nil {
-		server.Logger.Panic("rabbitmq connection failed", zap.Error(err))
+		server.Logger.Fatal("rabbitmq connection failed", zap.Error(err))
 	}
 	defer conn.Close()
 
 	ch, err := conn.Channel()
 	if err != nil {
-		server.Logger.Panic("rabbitmq open channel failed", zap.Error(err))
+		server.Logger.Fatal("rabbitmq open channel failed", zap.Error(err))
 	}
 	defer ch.Close()
 
@@ -98,4 +105,20 @@ func main() {
 
 	// Start server
 	e.Logger.Fatal(e.Start(":3000"))
+}
+
+func migrateDB(dbURL string) error {
+	m, err := migrate.New(
+		"file://./migrations",
+		dbURL)
+	if err != nil {
+		return err
+	}
+	if err := m.Up(); err != nil {
+		if errors.Is(err, migrate.ErrNoChange) {
+			return nil
+		}
+		return err
+	}
+	return nil
 }
