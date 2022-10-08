@@ -1,4 +1,4 @@
-package controllers
+package healthz
 
 import (
 	"net/http"
@@ -11,14 +11,11 @@ import (
 
 func GetStatus(s *server.Server) func(c echo.Context) error {
 	return func(c echo.Context) error {
-
-		err := s.UserRepository.TestConnection(c.Request().Context())
+		err := s.ConnectionTester.TestConnection(c.Request().Context())
 		if err != nil {
-			s.Logger.Error("DB Connection check failed.", zap.Error(err))
+			s.Logger.Error("health check failed", zap.Error(err))
 			return c.NoContent(http.StatusInternalServerError)
 		}
-
-		s.Logger.Info("DB Connection check successful.")
 		return c.NoContent(http.StatusNoContent)
 	}
 }

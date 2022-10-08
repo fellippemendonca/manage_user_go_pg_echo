@@ -34,15 +34,6 @@ func NewUserRepo(db *sql.DB) *UserRepo {
 	}
 }
 
-func (s *UserRepo) TestConnection(ctx context.Context) error {
-	ctx, cancel := context.WithTimeout(ctx, postgresCheckTimeout)
-	defer cancel()
-	if err := s.db.PingContext(ctx); err != nil {
-		return fmt.Errorf("TestConnection failed: %w", err)
-	}
-	return nil
-}
-
 // Create user method
 func (s *UserRepo) CreateUser(ctx context.Context, user *models.User) (*models.User, error) {
 	query := `INSERT INTO U1.USERS (
@@ -63,7 +54,7 @@ func (s *UserRepo) CreateUser(ctx context.Context, user *models.User) (*models.U
 		$6, --COUNTRY
 		now() AT TIME ZONE 'utc', -- CREATED_AT
 		now() AT TIME ZONE 'utc' -- UPDATED_AT
-	) RETURNING ID, FIRST_NAME, LAST_NAME, NICKNAME, PASSWORD, EMAIL, COUNTRY, CREATED_AT, UPDATED_AT`
+	) RETURNING ID, FIRST_NAME, LAST_NAME, NICKNAME, EMAIL, COUNTRY, CREATED_AT, UPDATED_AT`
 
 	stmt, err := s.db.PrepareContext(ctx, query)
 	if err != nil {
@@ -72,23 +63,24 @@ func (s *UserRepo) CreateUser(ctx context.Context, user *models.User) (*models.U
 	defer stmt.Close()
 
 	row := stmt.QueryRow(
-		user.First_name,
-		user.Last_name,
+		user.FirstName,
+		user.LastName,
 		user.Nickname,
 		user.Password,
 		user.Email,
 		user.Country,
 	)
+
+	createdUser := &models.User{}
 	err = row.Scan(
-		&user.ID,
-		&user.First_name,
-		&user.Last_name,
-		&user.Nickname,
-		&user.Password,
-		&user.Email,
-		&user.Country,
-		&user.Created_at,
-		&user.Updated_at,
+		&createdUser.ID,
+		&createdUser.FirstName,
+		&createdUser.LastName,
+		&createdUser.Nickname,
+		&createdUser.Email,
+		&createdUser.Country,
+		&createdUser.CreatedAt,
+		&createdUser.UpdatedAt,
 	)
 
 	if err != nil {
@@ -97,7 +89,7 @@ func (s *UserRepo) CreateUser(ctx context.Context, user *models.User) (*models.U
 		}
 		return nil, fmt.Errorf("CreateUser failed: %w", err)
 	}
-	return user, nil
+	return createdUser, nil
 }
 
 // Update user method
@@ -111,7 +103,7 @@ func (s *UserRepo) UpdateUser(ctx context.Context, user *models.User) (*models.U
 		COUNTRY = $7,
 		UPDATED_AT = now() AT TIME ZONE 'utc' -- UPDATED_AT
 	WHERE ID = $1
-	RETURNING ID, FIRST_NAME, LAST_NAME, NICKNAME, PASSWORD, EMAIL, COUNTRY, CREATED_AT, UPDATED_AT`
+	RETURNING ID, FIRST_NAME, LAST_NAME, NICKNAME, EMAIL, COUNTRY, CREATED_AT, UPDATED_AT`
 
 	stmt, err := s.db.PrepareContext(ctx, query)
 	if err != nil {
@@ -121,32 +113,33 @@ func (s *UserRepo) UpdateUser(ctx context.Context, user *models.User) (*models.U
 
 	row := stmt.QueryRow(
 		user.ID,
-		user.First_name,
-		user.Last_name,
+		user.FirstName,
+		user.LastName,
 		user.Nickname,
 		user.Password,
 		user.Email,
 		user.Country,
 	)
+
+	updatedUser := &models.User{}
 	err = row.Scan(
-		&user.ID,
-		&user.First_name,
-		&user.Last_name,
-		&user.Nickname,
-		&user.Password,
-		&user.Email,
-		&user.Country,
-		&user.Created_at,
-		&user.Updated_at,
+		&updatedUser.ID,
+		&updatedUser.FirstName,
+		&updatedUser.LastName,
+		&updatedUser.Nickname,
+		&updatedUser.Email,
+		&updatedUser.Country,
+		&updatedUser.CreatedAt,
+		&updatedUser.UpdatedAt,
 	)
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, fmt.Errorf("UpdateUser returned no rows: %w", err)
+			return nil, fmt.Errorf("UpdateUser returned no rows: %w", err) // Idealmente mensages de log todas em minusculo
 		}
 		return nil, fmt.Errorf("UpdateUser failed: %w", err)
 	}
-	return user, nil
+	return updatedUser, nil
 }
 
 // Find users by the attributes present in the user struct param
@@ -166,15 +159,14 @@ func (s *UserRepo) FindUsers(ctx context.Context, user *models.User, pageToken s
 		FIRST_NAME,
 		LAST_NAME,
 		NICKNAME,
-		PASSWORD,
 		EMAIL,
 		COUNTRY,
 		CREATED_AT,
 		UPDATED_AT
 		FROM U1.USERS
 		WHERE ID >= $1
-		{{if .First_name}} AND FIRST_NAME = '{{.First_name}}' {{end}}
-		{{if .Last_name}} AND LAST_NAME = '{{.Last_name}}' {{end}}
+		{{if .FirstName}} AND FIRST_NAME = '{{.FirstName}}' {{end}}
+		{{if .LastName}} AND LAST_NAME = '{{.LastName}}' {{end}}
 		{{if .Nickname}} AND NICKNAME = '{{.Nickname}}' {{end}}
 		{{if .Country}} AND COUNTRY = '{{.Country}}' {{end}}
 		{{if .Email}} AND EMAIL = '{{.Email}}' {{end}}
@@ -205,14 +197,13 @@ func (s *UserRepo) FindUsers(ctx context.Context, user *models.User, pageToken s
 		var user models.User
 		if err := rows.Scan(
 			&user.ID,
-			&user.First_name,
-			&user.Last_name,
+			&user.FirstName,
+			&user.LastName,
 			&user.Nickname,
-			&user.Password,
 			&user.Email,
 			&user.Country,
-			&user.Created_at,
-			&user.Updated_at,
+			&user.CreatedAt,
+			&user.UpdatedAt,
 		); err != nil {
 			log.Fatal(err)
 			return nil, "", err

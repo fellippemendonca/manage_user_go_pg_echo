@@ -1,4 +1,4 @@
-package controllers
+package users
 
 import (
 	"net/http"
@@ -15,9 +15,15 @@ func Remove(s *server.Server) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		id := c.Param("id")
 
-		_, err := s.UserRepository.RemoveUser(c.Request().Context(), uuid.Must(uuid.Parse(id)))
+		parsedID, err := uuid.Parse(id)
 		if err != nil {
-			s.Logger.Error("Failed to remove user", zap.Error(err))
+			s.Logger.Error("failed to parse user id", zap.Error(err))
+			return c.NoContent(http.StatusBadRequest)
+		}
+
+		_, err = s.UserRepository.RemoveUser(c.Request().Context(), parsedID)
+		if err != nil {
+			s.Logger.Error("failed to remove user", zap.Error(err))
 			return c.NoContent(http.StatusInternalServerError)
 		}
 

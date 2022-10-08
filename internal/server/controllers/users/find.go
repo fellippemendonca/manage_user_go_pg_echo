@@ -1,4 +1,4 @@
-package controllers
+package users
 
 import (
 	"database/sql"
@@ -33,8 +33,8 @@ func Find(s *server.Server) func(c echo.Context) error {
 		// Fills a User object with possible values provided in the querystring
 		user := models.User{}
 		user.Country = values.Get("country")
-		user.First_name = values.Get("first_name")
-		user.Last_name = values.Get("last_name")
+		user.FirstName = values.Get("firstName")
+		user.LastName = values.Get("lastName")
 		user.Email = values.Get("email")
 		user.Nickname = values.Get("nickname")
 		pageToken := values.Get("page_token")
