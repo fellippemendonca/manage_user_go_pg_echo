@@ -1,6 +1,31 @@
 # MANAGE_USER_GO_PG_ECHO
 
-This is a simple service to manage users.
+This is a simple service to manage users in a Postgres DB while the changes are being broadcasted to a RabbitMQ service asynchronously.
+
+The service must allow you to:
+- [x] Add a new User
+- [x] Modify an existing User
+    - It was assumed a PUT method that replaces the entire User attributes, not PATCH.
+- [x] Remove a User
+- [x] Return a paginated list of Users, allowing for filtering by certain criteria (e.g. all Users with the country "UK")
+    - As the pagination method wasn't specified I've chosen the `nextPageToken` pagination that is the simplest and fastest I know.
+    - None of User response body are returning the password field for safety concerns.
+
+The service must:
+- [x] Provide an HTTP or gRPC API
+    - HTTP only, using [Echo](https://echo.labstack.com/) web framework
+- [x] Use a sensible storage mechanism for the Users
+    - I've chosen a [PostgresDB](https://www.postgresql.org/)
+    - There is not being used any SQL generator as the project just use simple CRUD operations.
+- [x] Have the ability to notify other interested services of changes to User entities
+    - I've chosen the [RabbitMQ](https://www.rabbitmq.com/) to broadcast the entity changes sent events.
+    - The messages are being triggered as soon as the DB persists the data successfully but no additional checks are being made after the message is dispatched, (May need improvements for critical operations).
+- [x] Have meaningful logs
+    - I've chosen [Zap logger](https://pkg.go.dev/go.uber.org/zap). 
+- [x] Be well documented
+    - I hope to be providing lot's of detais in this README.md and also in the code.
+- [x] Have a health check
+    - The health check is checking if all connections are alive.
 
 ## Class Diagrams:
 ```mermaid
@@ -70,7 +95,7 @@ sequenceDiagram
     API->>+DB: RemoveUser()
     DB-->>-API: Num
     API->>+QUEUE: Event: delete_user
-    API-->>Person: Accepted: User
+    API-->>Person: Accepted
 ```
 
 ## How to run:
@@ -105,10 +130,18 @@ Obs.: The Go service may fail and restart a few times During initialization beca
 
 ## Request Examples:
 
+### Healthz:
+#### Request:
+```sh
+curl --request GET 'http://localhost:3000/api/healthz'
+```
+#### Response:
+HttpStatus: 204 No Content
+
 ### Create User:
 #### Request:
 ```sh
-curl --location --request POST 'http://localhost:3000/api/users' \
+curl --request POST 'http://localhost:3000/api/users' \
 --header 'Content-Type: application/json' \
 --data-raw '{
     "first_name":"Jacinto",
@@ -133,11 +166,11 @@ HttpStatus: 201 Created
     "updated_at": "2022-10-09T16:25:03.214561Z"
 }
 ```
-Obs.: Password hidden for safety concerns
+Obs.: Password hidden from responses for safety concerns
 ### Update User:
 #### Request:
 ```sh
-curl --location --request PUT 'http://localhost:3000/api/users/bec30bd2-0a60-4609-8271-d74cd206a7ed' \
+curl --request PUT 'http://localhost:3000/api/users/bec30bd2-0a60-4609-8271-d74cd206a7ed' \
 --header 'Content-Type: application/json' \
 --data-raw '{
     "id": "bec30bd2-0a60-4609-8271-d74cd206a7ed",
@@ -163,12 +196,12 @@ HttpStatus: 200 Ok
     "updated_at": "2022-10-09T14:43:16.289308Z"
 }
 ```
-Obs.: Password hidden for safety concerns
+Obs.: Password hidden from responses for safety concerns
 
 ### Remove User:
 #### Request:
 ```sh
-curl --location --request DELETE 'http://localhost:3000/api/users/bec30bd2-0a60-4609-8271-d74cd206a7ed'
+curl --request DELETE 'http://localhost:3000/api/users/bec30bd2-0a60-4609-8271-d74cd206a7ed'
 ```
 #### Response:
 HttpStatus: 202 Accepted
@@ -176,7 +209,7 @@ HttpStatus: 202 Accepted
 ### Find User:
 #### Request:
 ```sh
-curl --location --request GET 'http://localhost:3000/api/users?country=JM&limit=1&page_token=NDc2Nzg5NjctMzQ2ZS00NmJlLWI1ZGEtMGVhZDNlMDgwYzc0'
+curl --request GET 'http://localhost:3000/api/users?country=JM&limit=1&page_token=NDc2Nzg5NjctMzQ2ZS00NmJlLWI1ZGEtMGVhZDNlMDgwYzc0'
 ```
 #### Response:
 HttpStatus: 200 Ok
@@ -197,5 +230,15 @@ HttpStatus: 200 Ok
     "page_token": "ZjJmNDdmYTktNjk3Yy00YTY5LWJhZmQtZmU2ZmFjNjNkZjk5"
 }
 ```
-Obs.: Password hidden for safety concerns
+Obs.: Password hidden from responses for safety concerns
 
+## Next steps
+- [ ] Improve migrations system. The current one is just designed to Create a new schema and a table. I would need a precise control of versions transactions and rollbacks. 
+- [ ] Improve events system. Currently I don't validate the integration success so any critical update may be lost if there is a sending problem. 
+- [ ] DB transactions also would need to be included if I want to sync it with the event sending.
+- [ ] The docker-compose.yaml is very simple and there is not a wait-for-readiness, so the service will just keep being restarted until RabbitMQ and PostgresDB are ready. 
+- [ ] The User model is being shared by the API and Repository. Ideally should have one for each.
+- [ ] Ideally for more complex queries I could use [SQL generator for Go](https://github.com/Masterminds/squirrel).
+- [ ] The Graceful-Shutdown is basically inexistent and should be implemented.
+- [ ] More Unity tests can be added to improve the coverage, and also Functional tests that are non existent right now.
+- [ ] A robust authentication system.
