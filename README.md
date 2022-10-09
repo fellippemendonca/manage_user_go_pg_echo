@@ -13,9 +13,3 @@ sequenceDiagram
     External-->>-System: Return found Something
     System-->>Person: Shows returned Something
 ```
-
-
-
-check test healthz folder organization
-
-

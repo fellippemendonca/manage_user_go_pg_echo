@@ -6,9 +6,7 @@ import (
 
 // Migration function
 func MigrateDB(dbURL string) error {
-	m, err := migrate.New(
-		"file://./migrations",
-		dbURL)
+	m, err := migrate.New("file://./migrations", dbURL)
 	if err != nil {
 		return err
 	}
