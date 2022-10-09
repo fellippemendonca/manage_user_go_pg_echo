@@ -32,12 +32,6 @@ func Logger(log *zap.Logger) echo.MiddlewareFunc {
 				zap.String("user_agent", req.UserAgent()),
 			}
 
-			id := req.Header.Get(echo.HeaderXRequestID)
-			if id == "" {
-				id = res.Header().Get(echo.HeaderXRequestID)
-			}
-			fields = append(fields, zap.String("request_id", id))
-
 			n := res.Status
 			switch {
 			case n >= 500:

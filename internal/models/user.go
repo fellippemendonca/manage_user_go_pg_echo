@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// Main User Struct (It is being used for both API and DB in this project. Ideally should be split)
+// Main User Struct (It is being used for both API and DB in this project. Ideally should be one for each)
 type User struct {
 	ID        uuid.UUID `json:"id"`
 	FirstName string    `json:"first_name"`

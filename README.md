@@ -15,7 +15,6 @@ sequenceDiagram
 ```
 
 
-Migrate using global schema only
 
 check test healthz folder organization
 

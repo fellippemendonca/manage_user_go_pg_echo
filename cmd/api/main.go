@@ -6,7 +6,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/golang-migrate/migrate/v4"
+	"github.com/golang-migrate/migrate"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/joho/godotenv"
@@ -15,10 +15,11 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 	"go.uber.org/zap"
 
+	"github.com/fellippemendonca/manage_user_go_pg_echo/internal/healthz"
 	"github.com/fellippemendonca/manage_user_go_pg_echo/internal/messages"
+	"github.com/fellippemendonca/manage_user_go_pg_echo/internal/migrator"
 	"github.com/fellippemendonca/manage_user_go_pg_echo/internal/repositories"
 	"github.com/fellippemendonca/manage_user_go_pg_echo/internal/server"
-	"github.com/fellippemendonca/manage_user_go_pg_echo/internal/server/healthz"
 	"github.com/fellippemendonca/manage_user_go_pg_echo/internal/server/middlewares"
 	"github.com/fellippemendonca/manage_user_go_pg_echo/internal/server/routes"
 )
@@ -44,7 +45,7 @@ func main() {
 	// Init .env variables
 	err = godotenv.Load(".env")
 	if err != nil {
-		server.Logger.Warn("Error loading .env file")
+		server.Logger.Warn("Error loading .env file") // May warn running inside docker
 	}
 
 	// Database Connection
@@ -54,18 +55,18 @@ func main() {
 	}
 	defer db.Close()
 	server.Logger.Info("Database connected")
+
+	// Instantiating a new UserRepository
 	userRepo := repositories.NewUserRepo(db)
 
-	if err := migrateDB(os.Getenv("MANAGE_USER_GO_POSTGRES")); err != nil {
-		server.Logger.Fatal("database migration failed", zap.Error(err))
-	}
-
+	// Connecting to RabbitMQ
 	conn, err := amqp.Dial(os.Getenv("MANAGE_USER_GO_RABBITMQ"))
 	if err != nil {
 		server.Logger.Fatal("rabbitmq connection failed", zap.Error(err))
 	}
 	defer conn.Close()
 
+	// Opening Channel to RabbitMQ
 	ch, err := conn.Channel()
 	if err != nil {
 		server.Logger.Fatal("rabbitmq open channel failed", zap.Error(err))
@@ -73,18 +74,33 @@ func main() {
 	defer ch.Close()
 
 	server.Logger.Info("Messaging service connected")
-	userEvents := messages.NewUserEvents(server.Logger, ch, userRepo)
 
-	// Server
+	// Assign Chained tester with active connections to Server
 	server.ConnectionTester = &healthz.ChainedTester{
 		Testers: []healthz.ConnectionTester{
 			&healthz.DBTester{DB: db},
 			&healthz.AmqpTester{Conn: conn},
 		},
 	}
-	server.UserRepository = userEvents
 
-	// Echo
+	// Instantiating a new UserEvents wrapping UserRepository
+	wrappedRepo := messages.NewUserEvents(server.Logger, ch, userRepo)
+
+	// Assigning wrapped-UserRepository to Server
+	server.UserRepository = wrappedRepo
+
+	// Initial migrations if not yet exists
+	if err := migrator.MigrateDB(os.Getenv("MANAGE_USER_GO_POSTGRES")); err != nil {
+		if errors.Is(err, migrate.ErrNoChange) {
+			server.Logger.Info("migrations unchanged", zap.Error(err))
+		} else {
+			server.Logger.Fatal("migrations failed", zap.Error(err))
+		}
+	} else {
+		server.Logger.Info("migrations done")
+	}
+
+	// Instantiating Echo
 	e := echo.New()
 	e.AcquireContext()
 
@@ -105,20 +121,4 @@ func main() {
 
 	// Start server
 	e.Logger.Fatal(e.Start(":3000"))
-}
-
-func migrateDB(dbURL string) error {
-	m, err := migrate.New(
-		"file://./migrations",
-		dbURL)
-	if err != nil {
-		return err
-	}
-	if err := m.Up(); err != nil {
-		if errors.Is(err, migrate.ErrNoChange) {
-			return nil
-		}
-		return err
-	}
-	return nil
 }
