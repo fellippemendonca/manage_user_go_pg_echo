@@ -1,6 +1,6 @@
 package models
 
-//go:generate mockgen -destination=./mocks/user_repository.go -package=models_mocks . UserRepository
+//go:generate mockgen -destination=../repositories/user_repository_mock.go -package=repositories . UserRepository
 
 import (
 	"context"
@@ -40,7 +40,7 @@ type UserRepository interface {
 	// Creates a new User
 	CreateUser(ctx context.Context, user *User) (*User, error)
 	// Return a paginated list of Users, allowing for filtering by certain criteria (e.g. all Users with the country "UK")
-	FindUsers(ctx context.Context, user *User, pageToken string, limit int) ([]*User, string, error)
+	FindUsers(ctx context.Context, user *User, pageToken string, limit int) (*UsersResponse, error)
 	// Modify an existing User
 	UpdateUser(ctx context.Context, user *User) (*User, error)
 	// Remove a User

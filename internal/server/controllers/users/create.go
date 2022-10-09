@@ -15,13 +15,13 @@ func Create(s *server.Server) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		u := new(models.User)
 		if err := c.Bind(u); err != nil {
-			s.Logger.Error("Failed to parse user body", zap.Error(err))
+			s.Logger.Error("failed to parse user body", zap.Error(err))
 			return c.NoContent(http.StatusBadRequest)
 		}
 
 		user, err := s.UserRepository.CreateUser(c.Request().Context(), u)
 		if err != nil {
-			s.Logger.Error("Failed to persist user", zap.Error(err))
+			s.Logger.Error("failed to persist user", zap.Error(err))
 			return c.NoContent(http.StatusInternalServerError)
 		}
 

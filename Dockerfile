@@ -12,7 +12,7 @@ RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o /app ./cmd/api
 
 FROM alpine:latest
 
-RUN apk add --no-cache ca-certificates wait4x
+RUN apk add --no-cache ca-certificates
 COPY --from=build /app /app
 COPY --from=build /build/migrations /migrations
 ENTRYPOINT ["/app"]

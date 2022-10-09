@@ -5,8 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
-	"time"
 
 	"github.com/google/uuid"
 
@@ -15,10 +13,8 @@ import (
 )
 
 const (
-	// 2sec is plenty, but maybe this should be configurable.
-	postgresCheckTimeout     = 2 * time.Second
-	pageLimit            int = 100
-	oneForToken          int = 1
+	pageLimit   int = 100
+	oneForToken int = 1
 )
 
 // UserRepo implements models.UserRepo
@@ -82,7 +78,6 @@ func (s *UserRepo) CreateUser(ctx context.Context, user *models.User) (*models.U
 		&createdUser.CreatedAt,
 		&createdUser.UpdatedAt,
 	)
-
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, fmt.Errorf("CreateUser returned no rows: %w", err)
@@ -132,7 +127,6 @@ func (s *UserRepo) UpdateUser(ctx context.Context, user *models.User) (*models.U
 		&updatedUser.CreatedAt,
 		&updatedUser.UpdatedAt,
 	)
-
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, fmt.Errorf("UpdateUser returned no rows: %w", err) // Idealmente mensages de log todas em minusculo
@@ -143,7 +137,7 @@ func (s *UserRepo) UpdateUser(ctx context.Context, user *models.User) (*models.U
 }
 
 // Find users by the attributes present in the user struct param
-func (s *UserRepo) FindUsers(ctx context.Context, user *models.User, pageToken string, limit int) ([]*models.User, string, error) {
+func (s *UserRepo) FindUsers(ctx context.Context, user *models.User, pageToken string, limit int) (*models.UsersResponse, error) {
 
 	if limit < 1 || limit > pageLimit {
 		limit = pageLimit
@@ -151,7 +145,7 @@ func (s *UserRepo) FindUsers(ctx context.Context, user *models.User, pageToken s
 
 	userID, err := common.DecodeBase64ToUUID(pageToken)
 	if err != nil {
-		return nil, "", fmt.Errorf("FindUsers pageToken decoding failed: %w", err)
+		return nil, fmt.Errorf("FindUsers pageToken decoding failed: %w", err)
 	}
 
 	template := `SELECT
@@ -176,18 +170,18 @@ func (s *UserRepo) FindUsers(ctx context.Context, user *models.User, pageToken s
 
 	query, err := common.ProcessTemplate(template, user)
 	if err != nil {
-		return nil, "", fmt.Errorf("FindUsers Templating failed: %w", err)
+		return nil, fmt.Errorf("FindUsers Templating failed: %w", err)
 	}
 
 	stmt, err := s.db.PrepareContext(ctx, query)
 	if err != nil {
-		return nil, "", fmt.Errorf("FindUsers Preparation failed: %w", err)
+		return nil, fmt.Errorf("FindUsers Preparation failed: %w", err)
 	}
 	defer stmt.Close()
 
 	rows, err := stmt.Query(userID, pageLimit+oneForToken)
 	if err != nil {
-		return nil, "", fmt.Errorf("FindUsers Query failed: %w", err)
+		return nil, fmt.Errorf("FindUsers Query failed: %w", err)
 	}
 	defer rows.Close()
 
@@ -205,15 +199,22 @@ func (s *UserRepo) FindUsers(ctx context.Context, user *models.User, pageToken s
 			&user.CreatedAt,
 			&user.UpdatedAt,
 		); err != nil {
-			log.Fatal(err)
-			return nil, "", err
+			if err != nil {
+				if errors.Is(err, sql.ErrNoRows) {
+					return nil, fmt.Errorf("FindUsers returned no rows: %w", err)
+				}
+				return nil, fmt.Errorf("FindUsers failed: %w", err)
+			}
 		}
 		users = append(users, &user)
 	}
 
 	usersClean, pageToken := common.Paginate(users, limit)
 
-	return usersClean, pageToken, nil
+	return &models.UsersResponse{
+		Users:     usersClean,
+		PageToken: pageToken,
+	}, nil
 }
 
 func (s *UserRepo) RemoveUser(ctx context.Context, id uuid.UUID) (int64, error) {

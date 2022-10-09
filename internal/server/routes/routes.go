@@ -13,6 +13,6 @@ func LoadRoutes(g *echo.Group, s *server.Server) {
 
 	g.GET("/users", users.Find(s))
 	g.POST("/users", users.Create(s))
-	g.PUT("/users", users.Update(s))
+	g.PUT("/users/:id", users.Update(s))
 	g.DELETE("/users/:id", users.Remove(s))
 }

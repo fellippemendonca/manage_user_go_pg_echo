@@ -13,3 +13,10 @@ sequenceDiagram
     External-->>-System: Return found Something
     System-->>Person: Shows returned Something
 ```
+
+
+Migrate using global schema only
+
+check test healthz folder organization
+
+

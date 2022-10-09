@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/fellippemendonca/manage_user_go_pg_echo/internal/models"
-	models_mocks "github.com/fellippemendonca/manage_user_go_pg_echo/internal/models/mocks"
+	"github.com/fellippemendonca/manage_user_go_pg_echo/internal/repositories"
 	"github.com/fellippemendonca/manage_user_go_pg_echo/internal/server"
 	"github.com/fellippemendonca/manage_user_go_pg_echo/internal/server/controllers/users"
 
@@ -26,7 +26,7 @@ func TestCreate(t *testing.T) {
 	defer ctrl.Finish()
 
 	s.Logger = zap.NewNop()
-	mockedRepo := models_mocks.NewMockUserRepository(ctrl)
+	mockedRepo := repositories.NewMockUserRepository(ctrl)
 	s.UserRepository = mockedRepo
 
 	handler := users.Create(s)
@@ -42,7 +42,7 @@ func TestCreate(t *testing.T) {
 		httpStatus int
 	}{
 		{
-			name: "user created",
+			name: "users.Create StatusCreated",
 			inputUser: `{
 				"first_name":"John",
 				"last_name":"Tester",
@@ -64,7 +64,7 @@ func TestCreate(t *testing.T) {
 			httpStatus: http.StatusCreated,
 		},
 		{
-			name: "repo error",
+			name: "users.Create StatusInternalServerError",
 			inputUser: `{
 				"first_name":"John",
 				"last_name":"Tester",
@@ -86,7 +86,7 @@ func TestCreate(t *testing.T) {
 			httpStatus: http.StatusInternalServerError,
 		},
 		{
-			name: "broken body",
+			name: "users.Create StatusBadRequest",
 			inputUser: `{
 				"first_name
 			}`,

@@ -1,12 +1,16 @@
 package users_test
 
 import (
+	"database/sql"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
-	models_mocks "github.com/fellippemendonca/manage_user_go_pg_echo/internal/models/mocks"
+	"github.com/fellippemendonca/manage_user_go_pg_echo/internal/models"
+	"github.com/fellippemendonca/manage_user_go_pg_echo/internal/repositories"
 	"github.com/fellippemendonca/manage_user_go_pg_echo/internal/server"
 	"github.com/fellippemendonca/manage_user_go_pg_echo/internal/server/controllers/users"
 	"github.com/google/uuid"
@@ -24,7 +28,7 @@ func TestFind(t *testing.T) {
 	defer ctrl.Finish()
 
 	s.Logger = zap.NewNop()
-	mockedRepo := models_mocks.NewMockUserRepository(ctrl)
+	mockedRepo := repositories.NewMockUserRepository(ctrl)
 	s.UserRepository = mockedRepo
 
 	handler := users.Find(s)
@@ -32,50 +36,111 @@ func TestFind(t *testing.T) {
 	e := echo.New()
 
 	tt := []struct {
-		name       string
-		inputID    string
-		repoInput  uuid.UUID
-		repoCall   int
-		repoResult int64
-		repoErr    error
-		httpStatus int
+		name           string
+		queryStr       string
+		inputUser      *models.User
+		inputPageToken string
+		repoCall       int
+		repoResult     *models.UsersResponse
+		repoErr        error
+		httpStatus     int
 	}{
 		{
-			name:       "user found",
-			inputID:    "904bc695-6b6c-418a-82a0-0acc7a747d46",
-			repoCall:   1,
-			repoInput:  uuid.MustParse("904bc695-6b6c-418a-82a0-0acc7a747d46"),
-			repoResult: 1,
+			name:     "users.Find StatusOK",
+			queryStr: "?first_name=J&last_name=T&nickname=JT&email=j.t@email.com&country=US&page_token=ABC&limit=1",
+			repoCall: 1,
+			inputUser: &models.User{
+				FirstName: "J",
+				LastName:  "T",
+				Nickname:  "JT",
+				Email:     "j.t@email.com",
+				Country:   "US",
+			},
+			inputPageToken: "ABC",
+			repoResult: &models.UsersResponse{
+				Users: []*models.User{{
+					ID:        uuid.MustParse("00000000-0000-0000-0000-000000000000"),
+					FirstName: "John",
+					LastName:  "Tester",
+					Nickname:  "JT",
+					Password:  "ABC123!",
+					Email:     "john.tester@email.com",
+					Country:   "US",
+					CreatedAt: time.Time{},
+					UpdatedAt: time.Time{},
+				}},
+				PageToken: "ABC",
+			},
 			repoErr:    nil,
-			httpStatus: http.StatusAccepted,
+			httpStatus: http.StatusOK,
 		},
 		{
-			name:       "repo error",
-			inputID:    "904bc695-6b6c-418a-82a0-0acc7a747d46",
-			repoCall:   1,
-			repoInput:  uuid.MustParse("904bc695-6b6c-418a-82a0-0acc7a747d46"),
-			repoResult: 1,
+			name:     "users.Find StatusNotFound",
+			queryStr: "?first_name=J&page_token=ABC&limit=1",
+			repoCall: 1,
+			inputUser: &models.User{
+				FirstName: "J",
+			},
+			inputPageToken: "ABC",
+			repoResult: &models.UsersResponse{
+				Users:     []*models.User{},
+				PageToken: "",
+			},
+			repoErr:    sql.ErrNoRows,
+			httpStatus: http.StatusNotFound,
+		},
+		{
+			name:     "users.Find StatusInternalServerError",
+			queryStr: "?first_name=J&page_token=ABC&limit=1",
+			repoCall: 1,
+			inputUser: &models.User{
+				FirstName: "J",
+			},
+			inputPageToken: "ABC",
+			repoResult: &models.UsersResponse{
+				Users:     []*models.User{},
+				PageToken: "",
+			},
 			repoErr:    errors.New("Generic Error"),
 			httpStatus: http.StatusInternalServerError,
+		},
+		{
+			name:           "users.Find StatusBadRequest",
+			queryStr:       "?page_token=ABC&limit=17x",
+			repoCall:       0,
+			inputUser:      &models.User{},
+			inputPageToken: "ABC",
+			repoResult: &models.UsersResponse{
+				Users:     []*models.User{},
+				PageToken: "",
+			},
+			repoErr:    errors.New("Generic Error"),
+			httpStatus: http.StatusBadRequest,
 		},
 	}
 
 	for _, test := range tt {
 		t.Run(test.name, func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodDelete, "/", nil)
+			req := httptest.NewRequest(http.MethodGet, "/api"+test.queryStr, nil)
 			req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
-			c.SetPath("/:id")
-			c.SetParamNames("id")
-			c.SetParamValues(test.inputID)
+			c.SetPath("/api")
+
+			test.repoResult.Users = append(test.repoResult.Users, test.inputUser)
 
 			// Mocked User Repository
-			mockedRepo.EXPECT().RemoveUser(c.Request().Context(), test.repoInput).Times(test.repoCall).Return(test.repoResult, test.repoErr)
+			mockedRepo.EXPECT().FindUsers(c.Request().Context(), test.inputUser, test.inputPageToken, 1).Times(test.repoCall).Return(test.repoResult, test.repoErr)
 
 			// Assertions
 			if assert.NoError(t, handler(c)) {
 				assert.Equal(t, test.httpStatus, rec.Code)
+				if test.repoErr == nil {
+					var usersResponse models.UsersResponse
+					err := json.Unmarshal(rec.Body.Bytes(), &usersResponse)
+					assert.NoError(t, err)
+					assert.Equal(t, *test.repoResult, usersResponse)
+				}
 			}
 		})
 	}

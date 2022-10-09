@@ -31,23 +31,23 @@ func Find(s *server.Server) func(c echo.Context) error {
 		}
 
 		// Fills a User object with possible values provided in the querystring
-		user := models.User{}
+		user := &models.User{}
 		user.Country = values.Get("country")
-		user.FirstName = values.Get("firstName")
-		user.LastName = values.Get("lastName")
+		user.FirstName = values.Get("first_name")
+		user.LastName = values.Get("last_name")
 		user.Email = values.Get("email")
 		user.Nickname = values.Get("nickname")
 		pageToken := values.Get("page_token")
 
-		users, pageToken, err := s.UserRepository.FindUsers(c.Request().Context(), &user, pageToken, limit)
+		usersResponse, err := s.UserRepository.FindUsers(c.Request().Context(), user, pageToken, limit)
 		if err != nil {
+			s.Logger.Error("FindUsers failed", zap.Error(err))
 			if errors.Is(err, sql.ErrNoRows) {
 				return c.NoContent(http.StatusNotFound)
 			}
-			s.Logger.Error("FindUsers failed", zap.Error(err))
 			return c.NoContent(http.StatusInternalServerError)
 		}
 
-		return c.JSON(http.StatusOK, models.UsersResponse{Users: users, PageToken: pageToken})
+		return c.JSON(http.StatusOK, usersResponse)
 	}
 }

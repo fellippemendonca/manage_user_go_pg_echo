@@ -28,11 +28,4 @@ services:
     depends_on:
       - postgres
       - rabbitmq
-    # entrypoint: [
-    #   # "wait4x", 
-    #   # "postgresql", "'postgres://bob:secret@1.2.3.4:5432/mydb?sslmode=disable postgresql://postgres/db?user=username&password=password&sslmode=disable'", "-t", "1m",
-    #   # "--", "wait4x", 
-    #   # "rabbitmq", "'amqp://guest:guest@rabbitmq:5672'", "-t", "1m",
-    #   # "--", "/app"
-    #   "/bin/sh", "-c" , "sleep 20 && /app"
-    # ]
+    restart: unless-stopped

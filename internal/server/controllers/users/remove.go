@@ -13,9 +13,7 @@ import (
 // e.DELETE("/users/:id", remove)
 func Remove(s *server.Server) func(c echo.Context) error {
 	return func(c echo.Context) error {
-		id := c.Param("id")
-
-		parsedID, err := uuid.Parse(id)
+		parsedID, err := uuid.Parse(c.Param("id"))
 		if err != nil {
 			s.Logger.Error("failed to parse user id", zap.Error(err))
 			return c.NoContent(http.StatusBadRequest)

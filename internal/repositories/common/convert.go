@@ -2,19 +2,9 @@ package common
 
 import (
 	"encoding/base64"
-	"encoding/json"
-	"fmt"
 
 	"github.com/google/uuid"
 )
-
-func ConvertObjectToJson(obj any) (string, error) {
-	result, err := json.Marshal(&obj)
-	if err != nil {
-		return "", fmt.Errorf("ConvertObjectToJson failed: %w", err)
-	}
-	return string(result), nil
-}
 
 func DecodeBase64ToUUID(encoded string) (uuid.UUID, error) {
 	if encoded == "" {

@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	models_mocks "github.com/fellippemendonca/manage_user_go_pg_echo/internal/models/mocks"
+	"github.com/fellippemendonca/manage_user_go_pg_echo/internal/repositories"
 	"github.com/fellippemendonca/manage_user_go_pg_echo/internal/server"
 	"github.com/fellippemendonca/manage_user_go_pg_echo/internal/server/controllers/users"
 	"github.com/google/uuid"
@@ -24,7 +24,7 @@ func TestRemove(t *testing.T) {
 	defer ctrl.Finish()
 
 	s.Logger = zap.NewNop()
-	mockedRepo := models_mocks.NewMockUserRepository(ctrl)
+	mockedRepo := repositories.NewMockUserRepository(ctrl)
 	s.UserRepository = mockedRepo
 
 	handler := users.Remove(s)
@@ -41,7 +41,7 @@ func TestRemove(t *testing.T) {
 		httpStatus int
 	}{
 		{
-			name:       "user deleted",
+			name:       "users.Remove StatusAccepted",
 			inputID:    "904bc695-6b6c-418a-82a0-0acc7a747d46",
 			repoCall:   1,
 			repoInput:  uuid.MustParse("904bc695-6b6c-418a-82a0-0acc7a747d46"),
@@ -50,13 +50,22 @@ func TestRemove(t *testing.T) {
 			httpStatus: http.StatusAccepted,
 		},
 		{
-			name:       "repo error",
+			name:       "users.Remove StatusInternalServerError",
 			inputID:    "904bc695-6b6c-418a-82a0-0acc7a747d46",
 			repoCall:   1,
 			repoInput:  uuid.MustParse("904bc695-6b6c-418a-82a0-0acc7a747d46"),
 			repoResult: 1,
 			repoErr:    errors.New("Generic Error"),
 			httpStatus: http.StatusInternalServerError,
+		},
+		{
+			name:       "users.Remove StatusBadRequest",
+			inputID:    "904bc695-6b6cxxxxx82a0-0acc7a747d46",
+			repoCall:   0,
+			repoInput:  uuid.MustParse("904bc695-6b6c-418a-82a0-0acc7a747d46"),
+			repoResult: 0,
+			repoErr:    errors.New("Generic Error"),
+			httpStatus: http.StatusBadRequest,
 		},
 	}
 

@@ -30,7 +30,7 @@ func NewUserEvents(logger *zap.Logger, ch *amqp.Channel, userRepo models.UserRep
 		nil,     // arguments
 	)
 	if err != nil {
-		logger.Fatal("failed to declare queue", zap.Error(err))
+		logger.Fatal("failed to declare event queue", zap.Error(err))
 	}
 
 	return &UserEvents{
@@ -55,7 +55,7 @@ func (s *UserEvents) sendEvent(ctx context.Context, msg []byte) error {
 			Body:        msg,
 		})
 	if err != nil {
-		s.logger.Fatal("failed to publish message", zap.Error(err))
+		s.logger.Fatal("failed to publish event message", zap.Error(err))
 		return err
 	}
 
@@ -76,7 +76,7 @@ func (s *UserEvents) CreateUser(ctx context.Context, user *models.User) (*models
 		User:      result,
 	})
 	if err != nil {
-		s.logger.Error("failed to marshal message", zap.Error(err))
+		s.logger.Error("failed to marshal create_user message", zap.Error(err))
 	} else {
 		go s.sendEvent(ctx, jsonEvent)
 	}
@@ -99,7 +99,7 @@ func (s *UserEvents) UpdateUser(ctx context.Context, user *models.User) (*models
 		User:      user,
 	})
 	if err != nil {
-		s.logger.Error("failed to marshal message", zap.Error(err))
+		s.logger.Error("failed to marshal update_user message", zap.Error(err))
 	} else {
 		go s.sendEvent(ctx, jsonEvent)
 	}
@@ -107,7 +107,7 @@ func (s *UserEvents) UpdateUser(ctx context.Context, user *models.User) (*models
 	return result, err
 }
 
-func (s *UserEvents) FindUsers(ctx context.Context, user *models.User, pageToken string, limit int) ([]*models.User, string, error) {
+func (s *UserEvents) FindUsers(ctx context.Context, user *models.User, pageToken string, limit int) (*models.UsersResponse, error) {
 	return s.userRepository.FindUsers(ctx, user, pageToken, limit)
 }
 
@@ -124,7 +124,7 @@ func (s *UserEvents) RemoveUser(ctx context.Context, id uuid.UUID) (int64, error
 		User:      nil,
 	})
 	if err != nil {
-		s.logger.Error("failed to marshal message", zap.Error(err))
+		s.logger.Error("failed to marshal delete_user message", zap.Error(err))
 	} else {
 		go s.sendEvent(ctx, jsonEvent)
 	}
