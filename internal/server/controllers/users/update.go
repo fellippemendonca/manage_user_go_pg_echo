@@ -11,7 +11,7 @@ import (
 	"github.com/fellippemendonca/manage_user_go_pg_echo/internal/server"
 )
 
-// e.PUT("/users", putUser)
+// Update User Controller is responsible for the User Update. (Should be used just for PUT requests, not for PATCH)
 func Update(s *server.Server) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		parsedID, err := uuid.Parse(c.Param("id"))

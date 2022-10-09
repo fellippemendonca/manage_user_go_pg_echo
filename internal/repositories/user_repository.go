@@ -13,16 +13,14 @@ import (
 )
 
 const (
-	pageLimit   int = 100
-	oneForToken int = 1
+	pageLimit   int = 100 // Is used as the defaul pageLimit
+	oneForToken int = 1   // This will be added to the page limit in order to retrieve the NextPageToken
 )
 
-// UserRepo implements models.UserRepo
+// UserRepo implements models.UserRepository
 type UserRepo struct {
 	db *sql.DB
 }
-
-// var _ port.UserRepo = (*UserRepo)(nil)
 
 func NewUserRepo(db *sql.DB) *UserRepo {
 	return &UserRepo{
@@ -30,7 +28,6 @@ func NewUserRepo(db *sql.DB) *UserRepo {
 	}
 }
 
-// Create user method
 func (s *UserRepo) CreateUser(ctx context.Context, user *models.User) (*models.User, error) {
 	query := `INSERT INTO U1.USERS (
 		FIRST_NAME,
@@ -54,7 +51,7 @@ func (s *UserRepo) CreateUser(ctx context.Context, user *models.User) (*models.U
 
 	stmt, err := s.db.PrepareContext(ctx, query)
 	if err != nil {
-		return nil, fmt.Errorf("CreateUser PrepareContext failed: %w", err)
+		return nil, fmt.Errorf("createuser prepare context failed: %w", err)
 	}
 	defer stmt.Close()
 
@@ -80,14 +77,13 @@ func (s *UserRepo) CreateUser(ctx context.Context, user *models.User) (*models.U
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, fmt.Errorf("CreateUser returned no rows: %w", err)
+			return nil, fmt.Errorf("createuser returned no rows: %w", err)
 		}
-		return nil, fmt.Errorf("CreateUser failed: %w", err)
+		return nil, fmt.Errorf("createuser failed: %w", err)
 	}
 	return createdUser, nil
 }
 
-// Update user method
 func (s *UserRepo) UpdateUser(ctx context.Context, user *models.User) (*models.User, error) {
 	query := `UPDATE U1.USERS SET
 		FIRST_NAME = $2,
@@ -102,7 +98,7 @@ func (s *UserRepo) UpdateUser(ctx context.Context, user *models.User) (*models.U
 
 	stmt, err := s.db.PrepareContext(ctx, query)
 	if err != nil {
-		return nil, fmt.Errorf("UpdateUser PrepareContext failed: %w", err)
+		return nil, fmt.Errorf("updateuser prepare context failed: %w", err)
 	}
 	defer stmt.Close()
 
@@ -129,14 +125,13 @@ func (s *UserRepo) UpdateUser(ctx context.Context, user *models.User) (*models.U
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, fmt.Errorf("UpdateUser returned no rows: %w", err) // Idealmente mensages de log todas em minusculo
+			return nil, fmt.Errorf("updateuser returned no rows: %w", err)
 		}
-		return nil, fmt.Errorf("UpdateUser failed: %w", err)
+		return nil, fmt.Errorf("updateuser failed: %w", err)
 	}
 	return updatedUser, nil
 }
 
-// Find users by the attributes present in the user struct param
 func (s *UserRepo) FindUsers(ctx context.Context, user *models.User, pageToken string, limit int) (*models.UsersResponse, error) {
 
 	if limit < 1 || limit > pageLimit {
@@ -145,7 +140,7 @@ func (s *UserRepo) FindUsers(ctx context.Context, user *models.User, pageToken s
 
 	userID, err := common.DecodeBase64ToUUID(pageToken)
 	if err != nil {
-		return nil, fmt.Errorf("FindUsers pageToken decoding failed: %w", err)
+		return nil, fmt.Errorf("findUsers pagetoken decoding failed: %w", err)
 	}
 
 	template := `SELECT
@@ -168,20 +163,24 @@ func (s *UserRepo) FindUsers(ctx context.Context, user *models.User, pageToken s
 		ORDER BY ID
 		LIMIT $2`
 
+	/* The query above is a template and will be filled depending of the
+	values that are existing in the user param.
+	The alternative https://github.com/Masterminds/squirrel seemed to me too overpower to use in just one query.
+	*/
 	query, err := common.ProcessTemplate(template, user)
 	if err != nil {
-		return nil, fmt.Errorf("FindUsers Templating failed: %w", err)
+		return nil, fmt.Errorf("findUsers templating failed: %w", err)
 	}
 
 	stmt, err := s.db.PrepareContext(ctx, query)
 	if err != nil {
-		return nil, fmt.Errorf("FindUsers Preparation failed: %w", err)
+		return nil, fmt.Errorf("findUsers preparation failed: %w", err)
 	}
 	defer stmt.Close()
 
 	rows, err := stmt.Query(userID, pageLimit+oneForToken)
 	if err != nil {
-		return nil, fmt.Errorf("FindUsers Query failed: %w", err)
+		return nil, fmt.Errorf("findUsers query failed: %w", err)
 	}
 	defer rows.Close()
 
@@ -201,14 +200,15 @@ func (s *UserRepo) FindUsers(ctx context.Context, user *models.User, pageToken s
 		); err != nil {
 			if err != nil {
 				if errors.Is(err, sql.ErrNoRows) {
-					return nil, fmt.Errorf("FindUsers returned no rows: %w", err)
+					return nil, fmt.Errorf("findUsers returned no rows: %w", err)
 				}
-				return nil, fmt.Errorf("FindUsers failed: %w", err)
+				return nil, fmt.Errorf("findUsers failed: %w", err)
 			}
 		}
 		users = append(users, &user)
 	}
 
+	// The nextPageToken is always a masked last User.ID
 	usersClean, pageToken := common.Paginate(users, limit)
 
 	return &models.UsersResponse{
@@ -222,13 +222,13 @@ func (s *UserRepo) RemoveUser(ctx context.Context, id uuid.UUID) (int64, error) 
 
 	stmt, err := s.db.PrepareContext(ctx, query)
 	if err != nil {
-		return 0, fmt.Errorf("RemoveUser PrepareContext failed: %w", err)
+		return 0, fmt.Errorf("removeuser prepare context failed: %w", err)
 	}
 	defer stmt.Close()
 
 	result, err := stmt.ExecContext(ctx, id)
 	if err != nil {
-		return 0, fmt.Errorf("RemoveUser ExecContext failed: %w", err)
+		return 0, fmt.Errorf("removeuser exec context failed: %w", err)
 	}
 	return result.RowsAffected()
 }

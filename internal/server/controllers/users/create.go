@@ -10,7 +10,7 @@ import (
 	"github.com/fellippemendonca/manage_user_go_pg_echo/internal/server"
 )
 
-// e.POST("/users", postUser)
+// Create User Controller is responsible for the User Creation
 func Create(s *server.Server) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		u := new(models.User)

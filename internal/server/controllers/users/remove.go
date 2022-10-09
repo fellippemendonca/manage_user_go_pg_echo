@@ -10,7 +10,7 @@ import (
 	"github.com/fellippemendonca/manage_user_go_pg_echo/internal/server"
 )
 
-// e.DELETE("/users/:id", remove)
+// Remove User Controller is responsible for Deleting the user from the database using its ID.
 func Remove(s *server.Server) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		parsedID, err := uuid.Parse(c.Param("id"))

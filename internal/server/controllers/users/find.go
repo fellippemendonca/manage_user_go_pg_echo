@@ -13,7 +13,7 @@ import (
 	"github.com/fellippemendonca/manage_user_go_pg_echo/internal/server"
 )
 
-// e.GET("/users", list)
+// Find Users Controller is able to retrieve a paginated list of users based on the query used and page-limit.
 func Find(s *server.Server) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		values := c.Request().URL.Query()

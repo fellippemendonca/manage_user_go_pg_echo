@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// Main User Struct (It is being used for both API and DB in this project. Ideally should be one for each)
+// User Main Struct (It is being used for both API and DB in this project. Ideally should be one for each)
 type User struct {
 	ID        uuid.UUID `json:"id"`
 	FirstName string    `json:"first_name"`
@@ -35,14 +35,14 @@ type UserEvent struct {
 	User      *User  `json:"user,omitempty"`
 }
 
-// UserRepository
+// UserRepository has all the methods possible to be called for a User entity
 type UserRepository interface {
-	// Creates a new User
+	// CreateUser creates a new User and returns the User with it's new ID
 	CreateUser(ctx context.Context, user *User) (*User, error)
-	// Return a paginated list of Users, allowing for filtering by certain criteria (e.g. all Users with the country "UK")
+	// FindUsers returnds a paginated list of Users, allowing for filtering by certain criteria (e.g. all Users with the country "UK")
 	FindUsers(ctx context.Context, user *User, pageToken string, limit int) (*UsersResponse, error)
-	// Modify an existing User
+	// UpdateUser Modifies an existing User and return the user with its new data
 	UpdateUser(ctx context.Context, user *User) (*User, error)
-	// Remove a User
+	// RemoveUser deletes a user from the database by its ID
 	RemoveUser(ctx context.Context, ID uuid.UUID) (int64, error)
 }
