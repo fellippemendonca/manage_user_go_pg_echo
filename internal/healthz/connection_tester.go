@@ -48,7 +48,7 @@ type ChainedTester struct {
 	Testers []ConnectionTester
 }
 
-// TestConnection is a methof from ChainedTester that executes all ConnectionTesters in its list
+// TestConnection is a method from ChainedTester that executes all ConnectionTesters in its list
 func (s *ChainedTester) TestConnection(ctx context.Context) error {
 	for _, tester := range s.Testers {
 		err := tester.TestConnection(ctx)
