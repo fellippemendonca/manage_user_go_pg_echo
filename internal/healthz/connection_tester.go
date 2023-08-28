@@ -58,3 +58,5 @@ func (s *ChainedTester) TestConnection(ctx context.Context) error {
 	}
 	return nil
 }
+
+// Implement testing methods dedicated in configuration for each dependency.
